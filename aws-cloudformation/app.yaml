@@ -1,0 +1,107 @@
+# Application Subnets
+
+  appSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: 10.2.2.0/24
+      AvailabilityZone: "us-east-1a"
+      Tags:
+      - Key: stack
+        Value: App Subnet A
+
+ appSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: 10.2.3.0/24
+      AvailabilityZone: "us-east-1b"
+      Tags:
+      - Key: stack
+        Value: App Subnet B
+
+# Route Tables
+
+  appRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: stack
+        Value: App Route Table A
+
+  appRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: stack
+        Value: App Route Table B
+
+# Nat Gateways
+
+NATGatewayA:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref appSubnetA
+      Tags:
+      - Key: stack
+        Value: Nat Gateway A
+
+  NATGatewayB:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref appSubnetB
+      Tags:
+      - Key: stack
+        Value: Nat Gateway B
+
+# Elastic IP Addresses
+
+  NATGatewayEIP:
+   Type: AWS::EC2::EIP
+   Properties:
+      Domain: vpc
+
+  NATGatewayEIP:
+   Type: AWS::EC2::EIP
+   Properties:
+      Domain: vpc
+
+# Route to NAT Gateways
+
+RouteNATGatewayA:
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref appRouteTableA
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGatewayA
+
+RouteNATGatewayB:
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref appRouteTableB
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGatewayB
+
+  # Subnet Route Table Associations
+
+  mySubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: appSubnetA
+      RouteTableId:
+        Ref: appRouteTableA
+
+    mySubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: appSubnetB
+      RouteTableId:
+        Ref: appRouteTableB

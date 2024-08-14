@@ -1,0 +1,61 @@
+# Public Subnets
+
+  publicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: 10.2.0.0/24
+      AvailabilityZone: "us-east-1a"
+      Tags:
+      - Key: stack
+        Value: Public Subnet A
+
+  publicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: 10.2.1.0/24
+      AvailabilityZone: "us-east-1b"
+      Tags:
+      - Key: stack
+        Value: Public Subnet B
+
+# Route Table
+
+  publicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:  
+        Ref: myVPC
+      Tags:
+      - Key: stack
+        Value: Public Subnets RT
+
+# Route to Internet Gateway
+
+    MyRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId:
+        Ref: publicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId:
+        Ref: MyInternetGateway
+  
+  # Subnet Route Table Associations
+
+  mySubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: publicSubnetA
+      RouteTableId:
+        Ref: publicRouteTable
+  
+    mySubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: publicSubnetB
+      RouteTableId:
+        Ref: publicRouteTable

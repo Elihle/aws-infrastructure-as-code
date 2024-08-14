@@ -1,0 +1,168 @@
+# Data Subnets
+
+  dataSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: 10.2.4.0/24
+      AvailabilityZone: "us-east-1a"
+      Tags:
+      - Key: stack
+        Value: Data Subnet A
+
+ dataSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: 10.2.5.0/24
+      AvailabilityZone: "us-east-1b"
+      Tags:
+      - Key: stack
+        Value: Data Subnet B
+
+# Security Groups
+
+DatabaseClientsSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: WP Database Clients
+    VpcId: !Ref myVPC
+    SecurityGroupEgress:
+      - IpProtocol: '-1'
+        CidrIp: 0.0.0.0/0
+
+DatabaseSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: Database Security Group
+    VpcId: !Ref myVPC
+    SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        SourceSecurityGroupId: !Ref DatabaseClientsSecurityGroup
+    SecurityGroupEgress:
+      - IpProtocol: '-1'
+        CidrIp: 0.0.0.0/0
+
+# Aurora Subnet Group
+
+Resources: 
+  myDBSubnetGroup: 
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Description of subnet group
+      SubnetIds: 
+        - dataSubnetA
+        - dataSubnetB
+      Tags: 
+        - Key: mykey
+          Value: myvalue
+
+# Aurora DB Cluster
+
+MyDBCluster:
+    Type: 'AWS::RDS::DBCluster'
+    Properties:
+      Engine: 'aurora-mysql'
+      EngineVersion: '8.0.mysql_aurora.3.04.1'
+      DBClusterIdentifier: 'mydbcluster'
+      MasterUsername: 'wpadmin'
+      MasterUserPassword: 'MyPassword123'
+      DBSubnetGroupName: !Ref MyDBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DatabaseSecurityGroup
+      BackupRetentionPeriod: 7
+      StorageEncrypted: true
+      MonitoringRoleArn: !GetAtt MyMonitoringRole.Arn
+      Tags:
+        - Key: Name
+          Value: MyDBCluster
+
+# Aurora DB Instance
+
+  MyDBInstanceA:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceClass: 'db.t4g.medium'
+      DBInstanceIdentifier: 'mydbinstanceA'
+      Engine: 'aurora-mysql'
+      DBClusterIdentifier: !Ref MyDBCluster
+      PubliclyAccessible: true
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt MyMonitoringRole.Arn
+      Tags:
+        - Key: Name
+          Value: MyDBInstanceA
+
+  MyDBInstanceB:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceClass: 'db.t4g.medium'
+      DBInstanceIdentifier: 'mydbinstanceB'
+      Engine: 'aurora-mysql'
+      DBClusterIdentifier: !Ref MyDBCluster
+      PubliclyAccessible: true
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt MyMonitoringRole.Arn
+      Tags:
+        - Key: Name
+          Value: MyDBInstanceB
+
+#----------------------------------------------------------------------------------------------------------------------
+
+# Amazon EFS - Security Groups
+
+EFSClientsSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: EFS Clients Security Group
+    VpcId: !Ref myVPC
+    SecurityGroupEgress:
+      - IpProtocol: '-1'
+        CidrIp: 0.0.0.0/0
+
+EFSSecurityGroup:
+  Type: AWS::EC2::SecurityGroup
+  Properties:
+    GroupDescription: EFS Security Group
+    VpcId: !Ref myVPC
+    SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 2049
+        ToPort: 2049
+        SourceSecurityGroupId: !Ref EFSClientsSecurityGroup
+    SecurityGroupEgress:
+      - IpProtocol: '-1'
+        CidrIp: 0.0.0.0/0
+
+# Amazon EFS
+
+FileSystemResource:
+    Type: 'AWS::EFS::FileSystem'
+    Properties:
+      Encrypted: true
+      PerformanceMode: 'generalPurpose'
+      FileSystemTags:
+        - Key: Name
+          Value: EncryptedEFS
+
+# Amazon EFS - Mount Targets
+
+EFSMountTargetA:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Ref MyEFS
+      SubnetId: !Ref dataSubnetA
+      VpcId: !Ref myVPC
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+
+  EFSMountTargetB:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Ref MyEFS
+      SubnetId: !Ref dataSubnetB
+      VpcId: !Ref myVPC
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
